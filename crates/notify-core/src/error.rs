@@ -30,6 +30,12 @@ pub enum NotifyError {
     MissingEnv { channel: String, env: String },
     #[error("channel type \"{0}\" is not available for sending yet")]
     UnsupportedProvider(String),
+    #[error("channel type \"{channel_type}\" does not support attachments")]
+    UnsupportedAttachment { channel_type: String },
+    #[error("HTTP request failed: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("provider request failed: {0}")]
+    Provider(String),
     #[error("I/O error at {path}: {source}")]
     Io {
         path: PathBuf,
@@ -51,6 +57,9 @@ impl NotifyError {
             Self::Validation(_) => "VALIDATION",
             Self::MissingEnv { .. } => "MISSING_ENV",
             Self::UnsupportedProvider(_) => "UNSUPPORTED_PROVIDER",
+            Self::UnsupportedAttachment { .. } => "UNSUPPORTED_ATTACHMENT",
+            Self::Http(_) => "HTTP",
+            Self::Provider(_) => "PROVIDER",
             Self::Io { .. } => "IO",
             Self::Json(_) => "JSON",
         }

@@ -73,11 +73,12 @@ struct SendArgs {
     json: bool,
 }
 
-fn main() -> ExitCode {
+#[tokio::main]
+async fn main() -> ExitCode {
     let cli = Cli::parse();
     let json_errors = cli.wants_json();
 
-    match run(cli) {
+    match run(cli).await {
         Ok(code) => code,
         Err(error) => {
             if json_errors {
@@ -105,11 +106,11 @@ impl Cli {
     }
 }
 
-fn run(cli: Cli) -> Result<ExitCode> {
+async fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
         Command::Send(args) => {
             let loaded = ConfigLoad::load(cli.config.as_deref())?;
-            run_send(&loaded.config, args)?;
+            run_send(&loaded.config, args).await?;
             Ok(ExitCode::SUCCESS)
         }
         Command::Channels(args) => {
@@ -123,13 +124,13 @@ fn run(cli: Cli) -> Result<ExitCode> {
         }
         Command::Test(args) => {
             let loaded = ConfigLoad::load(cli.config.as_deref())?;
-            run_test(&loaded.config, args)?;
+            run_test(&loaded.config, args).await?;
             Ok(ExitCode::SUCCESS)
         }
     }
 }
 
-fn run_send(config: &Config, args: SendArgs) -> Result<()> {
+async fn run_send(config: &Config, args: SendArgs) -> Result<()> {
     let channel_name = config.resolve_channel_name(args.channel.as_deref())?;
     let channel = config.channel(channel_name)?;
     ensure_channel_ready(config, channel_name)?;
@@ -162,7 +163,7 @@ fn run_send(config: &Config, args: SendArgs) -> Result<()> {
         return Ok(());
     }
 
-    let result = send_notification(channel_name, channel, &message)?;
+    let result = send_notification(channel_name, channel, &message).await?;
     let output = SendOutput {
         ok: true,
         channel: channel_name.to_string(),
@@ -176,7 +177,7 @@ fn run_send(config: &Config, args: SendArgs) -> Result<()> {
     Ok(())
 }
 
-fn run_test(config: &Config, args: TestArgs) -> Result<()> {
+async fn run_test(config: &Config, args: TestArgs) -> Result<()> {
     run_send(
         config,
         SendArgs {
@@ -192,6 +193,7 @@ fn run_test(config: &Config, args: TestArgs) -> Result<()> {
             json: args.json,
         },
     )
+    .await
 }
 
 fn run_channels(config: &Config, json_output: bool) -> Result<()> {
@@ -429,8 +431,8 @@ mod tests {
         assert_eq!(error.code(), "INVALID_INPUT");
     }
 
-    #[test]
-    fn dry_run_does_not_write_file_log() {
+    #[tokio::test]
+    async fn dry_run_does_not_write_file_log() {
         let dir = tempdir().unwrap();
         let log_path = dir.path().join("notify-log");
         let mut channels = BTreeMap::new();
@@ -460,6 +462,7 @@ mod tests {
                 json: true,
             },
         )
+        .await
         .unwrap();
 
         assert!(!log_path.exists());

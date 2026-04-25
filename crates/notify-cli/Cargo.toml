@@ -12,6 +12,7 @@ path = "src/main.rs"
 clap.workspace = true
 notify-core = { path = "../notify-core" }
 serde_json.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 tempfile = "3"

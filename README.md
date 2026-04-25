@@ -17,7 +17,8 @@ notify send --channel personal --title "Task completed" --body "The report is re
 * `ntfy`
 * `webhook`
 
-The CLI can load and check configuration for all channel types above. Sending is currently implemented for `file-log`; the other channel types are parsed and validated but return an explicit not-yet-available error when used for `notify send`.
+The CLI can load, check, and send through the channel types above. External channel types require their configured service credentials or environment variables.
+
 
 ## Installation
 

@@ -8,65 +8,15 @@ use serde::Serialize;
 use time::{format_description::FormatItem, macros::format_description};
 
 use crate::{
-    NotifyError, Result,
+    MessageFormat, NotifyError, NotifyMessage, Priority, Result,
     config::{ChannelConfig, CheckIssue, Config, FileLogConfig},
-    message::NotifyMessage,
 };
+
+use super::{SendResult, StoredAttachment, common::path_to_string};
 
 const MONTH_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]");
 
-#[derive(Debug, Clone)]
-pub struct SendResult {
-    pub id: String,
-    pub attachments: Vec<StoredAttachment>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct StoredAttachment {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub original_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stored_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub size_bytes: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sha256: Option<String>,
-}
-
-impl StoredAttachment {
-    pub fn dry_run(path: &Path) -> Self {
-        Self {
-            path: Some(path_to_string(path)),
-            name: None,
-            original_path: None,
-            stored_path: None,
-            mime_type: None,
-            size_bytes: None,
-            sha256: None,
-        }
-    }
-}
-
-pub fn send_notification(
-    channel_name: &str,
-    channel: &ChannelConfig,
-    message: &NotifyMessage,
-) -> Result<SendResult> {
-    match channel {
-        ChannelConfig::FileLog(config) => send_file_log(channel_name, config, message),
-        other => Err(NotifyError::UnsupportedProvider(
-            other.type_name().to_string(),
-        )),
-    }
-}
-
-pub fn check_file_log_paths(config: &Config) -> Vec<CheckIssue> {
+pub(super) fn check_paths(config: &Config) -> Vec<CheckIssue> {
     config
         .channels
         .iter()
@@ -114,7 +64,7 @@ pub fn check_file_log_paths(config: &Config) -> Vec<CheckIssue> {
         .collect()
 }
 
-fn send_file_log(
+pub(super) fn send(
     channel_name: &str,
     config: &FileLogConfig,
     message: &NotifyMessage,
@@ -149,6 +99,7 @@ fn send_file_log(
 
         stored_attachments.push(StoredAttachment {
             path: None,
+            field: None,
             name: Some(attachment.name.clone()),
             original_path: Some(path_to_string(&attachment.path)),
             stored_path: Some(path_to_string(
@@ -218,8 +169,8 @@ struct FileLogRecord<'a> {
 struct FileLogMessage<'a> {
     title: &'a str,
     body: Option<&'a str>,
-    format: crate::MessageFormat,
-    priority: crate::Priority,
+    format: MessageFormat,
+    priority: Priority,
     tags: &'a [String],
 }
 
@@ -249,39 +200,39 @@ fn unique_file_name(directory: &Path, file_name: &str) -> String {
     unreachable!("unbounded suffix search should always return")
 }
 
-fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
 
     use tempfile::tempdir;
 
-    use crate::{Attachment, MessageFormat, Priority};
+    use crate::{Attachment, MessageFormat};
 
     use super::*;
+
+    fn message_with_attachment(path: &Path) -> NotifyMessage {
+        NotifyMessage::new(
+            "Done".to_string(),
+            Some("Attached.".to_string()),
+            MessageFormat::Text,
+            Priority::Info,
+            vec!["report".to_string()],
+            vec![Attachment::from_path(path).unwrap()],
+        )
+        .unwrap()
+    }
 
     #[test]
     fn file_log_writes_jsonl_and_copies_attachment() {
         let dir = tempdir().unwrap();
         let source = dir.path().join("report.txt");
         fs::write(&source, "hello").unwrap();
-        let message = NotifyMessage::new(
-            "Done".to_string(),
-            Some("Attached.".to_string()),
-            MessageFormat::Text,
-            Priority::Info,
-            vec!["report".to_string()],
-            vec![Attachment::from_path(&source).unwrap()],
-        )
-        .unwrap();
+        let message = message_with_attachment(&source);
         let config = FileLogConfig {
             path: dir.path().join("notify-log"),
         };
 
-        let result = send_file_log("local", &config, &message).unwrap();
+        let result = send("local", &config, &message).unwrap();
 
         let jsonl = fs::read_to_string(config.path.join("notifications.jsonl")).unwrap();
         assert!(jsonl.contains("\"channel\":\"local\""));
@@ -315,7 +266,7 @@ mod tests {
             path: dir.path().join("notify-log"),
         };
 
-        let result = send_file_log("local", &config, &message).unwrap();
+        let result = send("local", &config, &message).unwrap();
 
         let paths = result
             .attachments
