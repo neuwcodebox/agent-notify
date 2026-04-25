@@ -1,11 +1,17 @@
 # agent-notify
 
+[![Crates.io](https://img.shields.io/crates/v/agent-notify.svg)](https://crates.io/crates/agent-notify)
+[![Rust: 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](Cargo.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](Cargo.toml)
+
 A notification CLI for AI agents and automation scripts.
+
+![hero](./docs/assets/hero.png)
 
 `agent-notify` provides the `notify` command for sending messages and generated files through configured notification channels.
 
 ```bash
-notify send --channel personal --title "Task completed" --body "The report is ready."
+notify send --channel personal --title "Task completed" --body "The report is ready." --file ./report.pdf
 ```
 
 ## Supported Channels
