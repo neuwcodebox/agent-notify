@@ -14,6 +14,16 @@ This skill is for notifying a human or another system that something happened, s
 - A warning needs attention
 - A generated artifact is ready
 
+## Installation
+
+If the `notify` command is missing, install `agent-notify` from crates.io:
+
+```bash
+cargo install agent-notify
+```
+
+If `cargo` is not available or installation fails, report that `agent-notify` must be installed before sending the notification. Do not try to send notifications by manually calling provider APIs.
+
 ## Core Command
 
 ```bash
