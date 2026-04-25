@@ -829,7 +829,8 @@ file1: application/octet-stream or detected MIME
 - HTTP 2xx + ok=true면 성공
 - HTTP 2xx + ok=false면 실패
 - HTTP non-2xx면 실패
-- 응답이 JSON이 아니면 HTTP status 기준으로 판단하되 warning 출력
+- 응답이 JSON이 아니면 HTTP status 기준으로 판단한다.
+  v1 CLI 출력에는 warning 전용 필드가 없으므로 별도 warning은 출력하지 않는다.
 ```
 
 ---
@@ -904,7 +905,8 @@ chart-2.png
 - 로컬 테스트
 - Agent 알림 동작 검증
 - webhook 수신 서버 없이 payload 확인
-- CI dry-run의 결과 보존
+- CI에서 알림 기록 보존
+- CI에서 dry-run 출력 확인
 - 실제 전송 전 메시지와 첨부 산출물 확인
 ```
 

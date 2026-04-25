@@ -366,7 +366,7 @@ auth_header = "Bearer secret"
 timeout_seconds = 15
 ```
 
-The webhook channel uses the project-defined webhook protocol. See `docs/webhook-v1.md` for the payload format.
+The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `SPEC.md`.
 
 ## Examples
 
