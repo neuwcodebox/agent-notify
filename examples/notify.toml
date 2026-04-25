@@ -1,0 +1,35 @@
+default_channel = "local"
+
+[channels.local]
+type = "file-log"
+path = "./notify-log"
+
+[channels.personal]
+type = "telegram"
+bot_token_env = "NOTIFY_TELEGRAM_BOT_TOKEN"
+chat_id_env = "NOTIFY_TELEGRAM_CHAT_ID"
+parse_mode = "plain"
+
+[channels.team]
+type = "discord-webhook"
+webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+
+[channels.bot_team]
+type = "discord-bot"
+bot_token_env = "NOTIFY_DISCORD_BOT_TOKEN"
+channel_id_env = "NOTIFY_DISCORD_CHANNEL_ID"
+allow_mentions = false
+
+[channels.phone]
+type = "ntfy"
+server = "https://ntfy.sh"
+topic_env = "NOTIFY_NTFY_TOPIC"
+token_env = "NOTIFY_NTFY_TOKEN"
+
+[channels.automation]
+type = "webhook"
+url_env = "NOTIFY_WEBHOOK_URL"
+auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
+timeout_seconds = 15

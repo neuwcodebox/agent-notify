@@ -198,3 +198,55 @@ fn sha256_file(path: &Path) -> Result<String> {
 
     Ok(format!("{:x}", hasher.finalize()))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[test]
+    fn message_rejects_blank_title() {
+        let error = NotifyMessage::new(
+            "   ".to_string(),
+            Some("body".to_string()),
+            MessageFormat::Text,
+            Priority::Info,
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "INVALID_INPUT");
+        assert_eq!(error.to_string(), "title required");
+    }
+
+    #[test]
+    fn attachment_from_path_records_metadata() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("report.txt");
+        fs::write(&path, "hello").unwrap();
+
+        let attachment = Attachment::from_path(&path).unwrap();
+
+        assert_eq!(attachment.name, "report.txt");
+        assert_eq!(attachment.mime_type, "text/plain");
+        assert_eq!(attachment.size_bytes, 5);
+        assert_eq!(
+            attachment.sha256,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
+    }
+
+    #[test]
+    fn attachment_rejects_directories() {
+        let dir = tempdir().unwrap();
+
+        let error = Attachment::from_path(dir.path()).unwrap_err();
+
+        assert_eq!(error.code(), "INVALID_INPUT");
+        assert!(error.to_string().contains("is a directory"));
+    }
+}

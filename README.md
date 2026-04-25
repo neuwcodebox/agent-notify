@@ -22,9 +22,19 @@ The CLI can load, check, and send through the channel types above. External chan
 
 ## Installation
 
-Installation instructions are TBD until the first release.
+Build from this repository:
 
-Expected options:
+```bash
+cargo build --release
+```
+
+The binary is written to:
+
+```text
+target/release/notify
+```
+
+After the first published release, install with:
 
 ```bash
 cargo install agent-notify
@@ -51,6 +61,23 @@ notify send --title "Hello" --body "Hello from agent-notify."
 ```
 
 This writes a local JSONL log under `./notify-log`.
+
+## Concepts
+
+A `channel` is the configured destination name that users and agents select, such as `personal`, `team`, `phone`, `local`, or `automation`.
+
+A channel has a `type`, which controls how the notification is delivered:
+
+```text
+telegram
+discord-webhook
+discord-bot
+ntfy
+webhook
+file-log
+```
+
+Agents should use channel names and should not need to know service credentials or provider-specific API details.
 
 ## Configuration
 
@@ -97,6 +124,13 @@ auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
 [channels.local]
 type = "file-log"
 path = "./notify-log"
+```
+
+Sample files are included under:
+
+```text
+examples/notify.toml
+examples/notify.env.example
 ```
 
 ## Secrets
@@ -368,6 +402,18 @@ timeout_seconds = 15
 
 The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `SPEC.md`.
 
+## Webhook Protocol v1
+
+The `webhook` channel sends the agent-notify webhook protocol v1 payload.
+
+Without attachments, the request is `application/json`. With attachments, the request is `multipart/form-data` with a `payload` JSON part and file parts named `file0`, `file1`, and so on.
+
+The full protocol is documented in:
+
+```text
+docs/webhook-v1.md
+```
+
 ## Examples
 
 ### Local test
@@ -432,7 +478,7 @@ topic_env = "NOTIFY_NTFY_TOPIC"
 ```bash
 export NOTIFY_NTFY_TOPIC="my-private-topic"
 
-notify send --title "Approval needed" --priority warning --body "The agent needs manual approval."
+notify send --title "Attention needed" --priority warning --body "The agent needs attention."
 ```
 
 ### Webhook

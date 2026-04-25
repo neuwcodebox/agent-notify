@@ -87,7 +87,13 @@ pub(super) fn trim_response_body(body: &str) -> String {
     const MAX_LEN: usize = 240;
     let body = body.trim();
     if body.len() > MAX_LEN {
-        format!("{}...", &body[..MAX_LEN])
+        let end = body
+            .char_indices()
+            .map(|(index, _)| index)
+            .take_while(|index| *index <= MAX_LEN)
+            .last()
+            .unwrap_or(0);
+        format!("{}...", &body[..end])
     } else {
         body.to_string()
     }
@@ -113,5 +119,14 @@ mod tests {
 
         assert!(!error.to_string().contains("super-secret"));
         assert!(error.to_string().contains("webhook_url_env"));
+    }
+
+    #[test]
+    fn response_body_trimming_keeps_utf8_boundaries() {
+        let body = "상태".repeat(100);
+        let trimmed = trim_response_body(&body);
+
+        assert!(trimmed.ends_with("..."));
+        assert!(trimmed.len() <= 243);
     }
 }

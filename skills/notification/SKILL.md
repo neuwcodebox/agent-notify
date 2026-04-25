@@ -13,7 +13,6 @@ This skill is for notifying a human or another system that something happened, s
 - A task failed
 - A warning needs attention
 - A generated artifact is ready
-- User action or approval is required
 
 ## Core Command
 
@@ -56,7 +55,6 @@ Good titles:
 Task completed
 Task failed
 Report ready
-Approval required
 Deployment failed
 ```
 
@@ -66,7 +64,6 @@ Good bodies:
 The report was generated successfully.
 The build failed during the test step.
 The chart image is attached.
-Manual approval is required before deployment.
 ```
 
 Avoid putting long raw logs in the notification body. Summarize the result instead.
@@ -220,12 +217,6 @@ notify send --channel personal --priority success --title "Task completed" --bod
 
 ```bash
 notify send --channel personal --priority error --title "Task failed" --body "The task failed. See the generated error summary."
-```
-
-### Approval required
-
-```bash
-notify send --channel personal --priority warning --title "Approval required" --body "Manual approval is required before continuing."
 ```
 
 ### Artifact ready

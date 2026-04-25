@@ -553,6 +553,26 @@ path = "./notify-log"
     }
 
     #[test]
+    fn detects_default_channel_not_found() {
+        let config: Config = toml::from_str(
+            r#"
+default_channel = "missing"
+
+[channels.local]
+type = "file-log"
+path = "./notify-log"
+"#,
+        )
+        .unwrap();
+
+        let issues = config.validation_issues_with(&MapEnv(BTreeSet::new()));
+
+        assert!(issues.iter().any(|issue| {
+            issue.code == "DEFAULT_CHANNEL_NOT_FOUND" && issue.level == IssueLevel::Error
+        }));
+    }
+
+    #[test]
     fn detects_secret_conflict_and_missing_env() {
         let config: Config = toml::from_str(
             r#"
@@ -574,6 +594,30 @@ topic_env = "NOTIFY_NTFY_TOPIC"
 
         assert!(issues.iter().any(|issue| issue.code == "SECRET_CONFLICT"));
         assert!(issues.iter().any(|issue| issue.code == "MISSING_ENV"));
+    }
+
+    #[test]
+    fn detects_invalid_telegram_parse_mode() {
+        let config: Config = toml::from_str(
+            r#"
+default_channel = "personal"
+
+[channels.personal]
+type = "telegram"
+bot_token = "token"
+chat_id = "chat"
+parse_mode = "markdown"
+"#,
+        )
+        .unwrap();
+
+        let issues = config.validation_issues_with(&MapEnv(BTreeSet::new()));
+
+        assert!(issues.iter().any(|issue| {
+            issue.code == "INVALID_FIELD"
+                && issue.level == IssueLevel::Error
+                && issue.channel.as_deref() == Some("personal")
+        }));
     }
 
     #[test]

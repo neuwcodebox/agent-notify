@@ -57,3 +57,5 @@ Detailed behavior belongs in `SPEC.md`. This file only tracks the high-level imp
 - Run formatting, linting, and test checks.
 - Review documentation against `SPEC.md`.
 - Prepare an initial release build.
+
+Status: complete for the current v1 release candidate.
