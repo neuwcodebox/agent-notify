@@ -1,0 +1,17 @@
+[package]
+name = "notify-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "notify"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+notify-core = { path = "../notify-core" }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
