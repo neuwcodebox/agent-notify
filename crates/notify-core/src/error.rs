@@ -33,7 +33,7 @@ pub enum NotifyError {
     #[error("channel type \"{channel_type}\" does not support attachments")]
     UnsupportedAttachment { channel_type: String },
     #[error("HTTP request failed: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(#[source] reqwest::Error),
     #[error("provider request failed: {0}")]
     Provider(String),
     #[error("I/O error at {path}: {source}")]
@@ -43,6 +43,12 @@ pub enum NotifyError {
     },
     #[error("failed to serialize JSON output: {0}")]
     Json(#[from] serde_json::Error),
+}
+
+impl From<reqwest::Error> for NotifyError {
+    fn from(source: reqwest::Error) -> Self {
+        Self::Http(source.without_url())
+    }
 }
 
 impl NotifyError {
@@ -63,5 +69,29 @@ impl NotifyError {
             Self::Io { .. } => "IO",
             Self::Json(_) => "JSON",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn reqwest_errors_do_not_leak_request_url() {
+        let secret_url = "http://127.0.0.1:1/discord-webhook/secret-token";
+        let reqwest_error = reqwest::Client::new()
+            .post(secret_url)
+            .send()
+            .await
+            .unwrap_err();
+
+        assert!(reqwest_error.to_string().contains(secret_url));
+
+        let notify_error = NotifyError::from(reqwest_error);
+        let message = notify_error.to_string();
+
+        assert!(message.contains("HTTP request failed"));
+        assert!(!message.contains(secret_url));
+        assert!(!message.contains("secret-token"));
     }
 }
