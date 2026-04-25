@@ -40,11 +40,35 @@ notify send --title "<title>" --body "<message>"
 
 For concrete scenario examples, see `examples.md`.
 
+Common `notify send` options:
+
+```text
+--channel <name>       Use a configured channel. Omit to use default_channel.
+--title <text>         Notification title. Required.
+--body <text>          Inline notification body.
+--body-file <path>     Read body from a file.
+--file <path>          Attach a file. Can be repeated.
+--priority <level>     info | success | warning | error | critical
+--format <format>      text | markdown
+--tag <tag>            Add a tag. Can be repeated.
+--dry-run              Preview without sending.
+--json                 Emit JSON output for automation.
+--config <path>        Use a specific config file.
+```
+
 ## Channel Model
 
 A channel is a configured notification destination.
 
 Use configured channel names only. Do not infer service credentials, webhook URLs, bot tokens, or destination IDs.
+
+`notify` looks for configuration in this order:
+
+1. `--config <path>`
+2. `./notify.toml`
+3. `~/.config/agent-notify/config.toml`
+
+Supported channel types are `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, `webhook`, and `file-log`.
 
 ## Message Guidelines
 
@@ -69,6 +93,12 @@ warning   Attention may be needed
 error     Failed or blocked
 critical  Urgent human attention required
 ```
+
+## Format and Tags
+
+Use `--format text` by default. Use `--format markdown` only when the message body intentionally contains Markdown and the target channel should receive formatted content.
+
+Use `--tag` for compact routing, filtering, or categorization labels that the configured channel can preserve. Repeat `--tag` for multiple labels.
 
 ## Attachments
 
@@ -111,6 +141,12 @@ A configured `webhook` channel sends notifications using the agent-notify webhoo
 
 Do not manually construct webhook payloads when the `notify` CLI is available. Let the CLI produce the standard payload.
 
+## JSON Output
+
+Use `--json` when another tool or script will parse the command result.
+
+Do not use `--json` merely to make human-readable output quieter unless the user asked for machine-readable output.
+
 ## Dry Run
 
 `--dry-run` is for development, configuration checks, and debugging. Do not use it as a normal preflight step before every notification.
@@ -134,6 +170,10 @@ Follow these rules when using this skill:
 9. If notification delivery fails, summarize the failure and include the channel name and error reason.
 
 ## Checking Configuration
+
+Use `notify channels` to list configured channels and readiness.
+
+Use `notify check` to validate configuration. Add `--channel <name>` to check only one channel. Add `--json` when automation needs structured output.
 
 Use `notify test` instead of `notify send --dry-run` when the goal is to verify that a configured channel can actually deliver a message.
 

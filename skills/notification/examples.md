@@ -62,6 +62,26 @@ notify send --channel personal --title "Error summary" --body-file ./error-summa
 notify send --channel personal --title "Task failed" --body "The task failed. Summary follows." --body-file ./error-summary.md
 ```
 
+## Markdown Format
+
+```bash
+notify send --channel personal --title "Report ready" --body-file ./summary.md --format markdown
+```
+
+```bash
+notify send --channel personal --title "Release notes" --body "See the generated notes below." --body-file ./release-notes.md --format markdown
+```
+
+## Tags
+
+```bash
+notify send --channel personal --title "Build complete" --body "The build completed successfully." --tag build --tag complete
+```
+
+```bash
+notify send --channel personal --priority error --title "Deploy failed" --body "The deploy step failed." --tag deploy --tag production
+```
+
 ## Local File Log
 
 ```bash
@@ -86,6 +106,28 @@ notify send --channel automation --title "Report ready" --body "Attached generat
 
 ```bash
 notify send --channel personal --title "Task completed" --body "Done." --json
+```
+
+```bash
+notify channels --json
+```
+
+```bash
+notify check --channel personal --json
+```
+
+```bash
+notify test --channel personal --json
+```
+
+## Specific Config File
+
+```bash
+notify --config ./notify.toml send --channel personal --title "Task completed" --body "Done."
+```
+
+```bash
+notify --config ./notify.toml check --channel personal
 ```
 
 ## Dry Run
