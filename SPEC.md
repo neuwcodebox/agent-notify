@@ -1024,7 +1024,6 @@ skills/notification/examples.md
 
 ## 14.1 SKILL.md 초안
 
-````md
 ---
 name: notification
 description: Send status notifications from automation agents through configured channels using the notify CLI. Use for completion, failure, warning, approval-needed, or artifact-ready alerts.
@@ -1038,7 +1037,7 @@ Use `notify` to send concise notifications to configured channels.
 
 ```bash
 notify send --channel <name> --title "<title>" --body "<message>"
-````
+```
 
 ## Rules
 
@@ -1075,8 +1074,6 @@ Dry run:
 notify send --channel personal --title "Chart ready" --body "Attached chart image." --file ./chart.png --dry-run
 ```
 
-````
-
 중요: Skill에서는 inline secret 사용법을 가르치지 않는다. inline 설정은 README의 “Quick setup”에서만 설명한다.
 
 ---
@@ -1101,7 +1098,7 @@ README는 다음 구조가 좋다.
 7. Webhook protocol v1
 8. Agent Skill usage
 9. Examples
-````
+```
 
 ## 15.1 Quick setup
 
