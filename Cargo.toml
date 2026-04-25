@@ -8,8 +8,14 @@ resolver = "3"
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 readme = "README.md"
+description = "A multi-channel notification CLI for AI agents and automation scripts."
+repository = "https://github.com/neuwcodebox/agent-notify"
+homepage = "https://github.com/neuwcodebox/agent-notify"
+keywords = ["notify", "notification", "cli", "automation", "agent"]
+categories = ["command-line-utilities"]
 
 [workspace.dependencies]
 clap = { version = "4.5", features = ["derive"] }

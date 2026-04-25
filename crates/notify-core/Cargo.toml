@@ -1,8 +1,19 @@
 [package]
-name = "notify-core"
+name = "agent-notify-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+readme.workspace = true
+description = "Core notification config and provider implementation for agent-notify."
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "notify_core"
+path = "src/lib.rs"
 
 [dependencies]
 dirs.workspace = true

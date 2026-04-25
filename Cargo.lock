@@ -3,6 +3,36 @@
 version = 4
 
 [[package]]
+name = "agent-notify"
+version = "0.1.0"
+dependencies = [
+ "agent-notify-core",
+ "clap",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "agent-notify-core"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "hostname",
+ "mime_guess",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "time",
+ "tokio",
+ "toml",
+ "ulid",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -729,36 +759,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "notify-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "notify-core",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "notify-core"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "hostname",
- "mime_guess",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "time",
- "tokio",
- "toml",
- "ulid",
 ]
 
 [[package]]

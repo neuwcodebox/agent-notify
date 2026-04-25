@@ -1,8 +1,15 @@
 [package]
-name = "notify-cli"
+name = "agent-notify"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+readme.workspace = true
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [[bin]]
 name = "notify"
@@ -10,7 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
-notify-core = { path = "../notify-core" }
+notify-core = { package = "agent-notify-core", version = "0.1.0", path = "../notify-core" }
 serde_json.workspace = true
 tokio.workspace = true
 
