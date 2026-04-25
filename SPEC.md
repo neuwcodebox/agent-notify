@@ -1085,6 +1085,8 @@ README는 다음 구조가 좋다.
 ```text
 1. What is agent-notify?
 2. Installation
+   - crates.io: cargo install agent-notify
+   - source build: cargo build --release
 3. Quick start
 4. Concepts: channel and type
 5. Configuration
@@ -1143,10 +1145,10 @@ notify send --title "Hello" --body "Hello from agent-notify."
 agent-notify/
   Cargo.toml
   crates/
-    notify-cli/
+    notify-cli/       # package: agent-notify, binary: notify
       src/
         main.rs
-    notify-core/
+    notify-core/      # package: agent-notify-core, library: notify_core
       src/
         lib.rs
         config.rs

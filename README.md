@@ -22,25 +22,25 @@ The CLI can load, check, and send through the channel types above. External chan
 
 ## Installation
 
-Build from this repository:
-
-```bash
-cargo build --release
-```
-
-The binary is written to:
-
-```text
-target/release/notify
-```
-
-After the first published release, install with:
+Install from crates.io:
 
 ```bash
 cargo install agent-notify
 ```
 
-or download a prebuilt `notify` binary from the releases page.
+This installs the `notify` binary.
+
+To build from this repository instead:
+
+```bash
+cargo build --release
+```
+
+The local build writes the binary to:
+
+```text
+target/release/notify
+```
 
 ## Quick Start
 
@@ -508,3 +508,9 @@ skills/notification/
 ```
 
 Use it when installing `agent-notify` into an AI agent environment.
+
+Install the CLI first:
+
+```bash
+cargo install agent-notify
+```
