@@ -636,7 +636,7 @@ token = "..."
 첨부 파일:
 
 ```text
-v1에서는 ntfy 첨부 파일 업로드를 지원하지 않는다.
+현재 ntfy 첨부 파일 업로드를 지원하지 않는다.
 첨부 파일이 지정되면 에러 처리한다.
 ```
 
@@ -644,7 +644,7 @@ v1에서는 ntfy 첨부 파일 업로드를 지원하지 않는다.
 
 ```text
 ntfy의 핵심 용도는 가벼운 푸시 알림이다.
-파일 첨부까지 통합하려면 동작 방식과 제한을 별도 설계해야 하므로 v1에서는 제외한다.
+파일 첨부까지 통합하려면 동작 방식과 제한을 별도 설계해야 하므로 현재 지원하지 않는다.
 ```
 
 priority 매핑:
@@ -1026,7 +1026,7 @@ skills/notification/examples.md
 
 ---
 name: notification
-description: Send status notifications from automation agents through configured channels using the notify CLI. Use for completion, failure, warning, approval-needed, or artifact-ready alerts.
+description: Send notifications through configured channels using the notify CLI. Use when the user wants a notification.
 ---
 
 # Notification Skill
