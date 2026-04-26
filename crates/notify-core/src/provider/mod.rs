@@ -1,7 +1,10 @@
 mod common;
 mod discord;
 mod file_log;
+mod gotify;
 mod ntfy;
+mod pushover;
+mod slack;
 mod telegram;
 mod webhook;
 
@@ -88,6 +91,13 @@ pub async fn send_notification(
             discord::send_bot(&client, channel_name, config, message).await
         }
         ChannelConfig::Ntfy(config) => ntfy::send(&client, channel_name, config, message).await,
+        ChannelConfig::SlackWebhook(config) => {
+            slack::send_webhook(&client, channel_name, config, message).await
+        }
+        ChannelConfig::Pushover(config) => {
+            pushover::send(&client, channel_name, config, message).await
+        }
+        ChannelConfig::Gotify(config) => gotify::send(&client, channel_name, config, message).await,
         ChannelConfig::Webhook(config) => {
             webhook::send(&client, channel_name, config, message).await
         }

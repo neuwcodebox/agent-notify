@@ -21,6 +21,9 @@ notify send --channel personal --title "Task completed" --body "The report is re
 * `discord-webhook`
 * `discord-bot`
 * `ntfy`
+* `slack-webhook`
+* `pushover`
+* `gotify`
 * `webhook`
 
 The CLI can load, check, and send through the channel types above. External channel types require their configured service credentials or environment variables.
@@ -79,6 +82,9 @@ telegram
 discord-webhook
 discord-bot
 ntfy
+slack-webhook
+pushover
+gotify
 webhook
 file-log
 ```
@@ -121,6 +127,22 @@ type = "ntfy"
 server = "https://ntfy.sh"
 topic_env = "NOTIFY_NTFY_TOPIC"
 token_env = "NOTIFY_NTFY_TOKEN"
+
+[channels.chat]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
 
 [channels.automation]
 type = "webhook"
@@ -264,6 +286,9 @@ Example:
 personal     telegram          ready
 team         discord-webhook   ready
 phone        ntfy              ready
+chat         slack-webhook     ready
+mobile       pushover          ready
+self_hosted  gotify            ready
 local        file-log          ready
 automation   webhook           ready
 ```
@@ -391,6 +416,69 @@ token = "..."
 ```
 
 `token` is optional, depending on your ntfy server and topic configuration.
+
+### `slack-webhook`
+
+```toml
+[channels.chat]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+```
+
+Inline:
+
+```toml
+[channels.chat]
+type = "slack-webhook"
+webhook_url = "https://hooks.slack.com/services/..."
+```
+
+Incoming webhook messages are sent as JSON. Attachments are not supported by this channel type.
+
+### `pushover`
+
+```toml
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+device = "phone"
+sound = "pushover"
+```
+
+Inline:
+
+```toml
+[channels.mobile]
+type = "pushover"
+token = "app-token"
+user = "user-or-group-key"
+```
+
+`device` and `sound` are optional. Attachments are not supported by this channel type.
+
+### `gotify`
+
+```toml
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+priority = 5
+```
+
+Inline:
+
+```toml
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token = "app-token"
+```
+
+`priority` is optional. When omitted, `notify` maps the message priority to a Gotify numeric priority. Attachments are not supported by this channel type.
 
 ### `webhook`
 

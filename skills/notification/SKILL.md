@@ -58,7 +58,7 @@ Common `notify send` options:
 
 ## Network Access
 
-External channel types such as `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, and `webhook` require network access.
+External channel types such as `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, `slack-webhook`, `pushover`, `gotify`, and `webhook` require network access.
 
 When the user asks to send a real external notification or verify external delivery with `notify test`, run the command with escalated sandbox permissions immediately instead of first attempting it in a restricted network sandbox.
 
@@ -74,7 +74,7 @@ Use configured channel names only. Do not infer service credentials, webhook URL
 2. `./notify.toml`
 3. `~/.config/agent-notify/config.toml`
 
-Supported channel types are `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, `webhook`, and `file-log`.
+Supported channel types are `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, `slack-webhook`, `pushover`, `gotify`, `webhook`, and `file-log`.
 
 ## Message Guidelines
 
@@ -123,6 +123,9 @@ discord-bot       supports files
 webhook           supports files through the agent-notify webhook protocol
 file-log          copies files into the local attachment directory
 ntfy              does not support attachments
+slack-webhook     does not support attachments
+pushover          does not support attachments
+gotify            does not support attachments
 ```
 
 If the selected channel type does not support attachments, do not manually work around it. Report that the channel cannot send files.

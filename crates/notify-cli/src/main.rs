@@ -573,7 +573,10 @@ mod tests {
 
     use notify_core::{
         ChannelConfig,
-        config::{DiscordWebhookConfig, FileLogConfig, NtfyConfig},
+        config::{
+            DiscordWebhookConfig, FileLogConfig, GotifyConfig, NtfyConfig, PushoverConfig,
+            SlackWebhookConfig,
+        },
     };
     use serde_json::Value;
     use tempfile::tempdir;
@@ -1033,6 +1036,37 @@ mod tests {
                     token_env: None,
                 }),
             ),
+            (
+                "chat",
+                ChannelConfig::SlackWebhook(SlackWebhookConfig {
+                    webhook_url: None,
+                    webhook_url_env: Some("AGENT_NOTIFY_TEST_MISSING_ENV_DO_NOT_SET".to_string()),
+                    username: None,
+                    icon_emoji: None,
+                    icon_url: None,
+                    allow_mentions: None,
+                }),
+            ),
+            (
+                "mobile",
+                ChannelConfig::Pushover(PushoverConfig {
+                    token: Some("app-token".to_string()),
+                    token_env: None,
+                    user: Some("user-key".to_string()),
+                    user_env: None,
+                    device: None,
+                    sound: None,
+                }),
+            ),
+            (
+                "self_hosted",
+                ChannelConfig::Gotify(GotifyConfig {
+                    server: "https://gotify.example.com".to_string(),
+                    token: Some("app-token".to_string()),
+                    token_env: None,
+                    priority: None,
+                }),
+            ),
         ]);
 
         let json = serde_json::json!({
@@ -1044,9 +1078,13 @@ mod tests {
         assert_eq!(status_for(&json, "team")["status"], "ready");
         assert_eq!(status_for(&json, "broken")["status"], "error");
         assert_eq!(status_for(&json, "phone")["status"], "missing");
+        assert_eq!(status_for(&json, "chat")["status"], "missing");
+        assert_eq!(status_for(&json, "mobile")["type"], "pushover");
+        assert_eq!(status_for(&json, "self_hosted")["type"], "gotify");
         assert!(status_for(&json, "team")["warnings"].is_array());
         assert!(status_for(&json, "phone")["missing_env"].is_array());
         assert_eq!(status_for(&json, "local")["type"], "file-log");
+        assert_eq!(status_for(&json, "chat")["type"], "slack-webhook");
     }
 
     fn config_with_channels(channels: Vec<(&str, ChannelConfig)>) -> Config {

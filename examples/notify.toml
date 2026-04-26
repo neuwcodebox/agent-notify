@@ -28,6 +28,22 @@ server = "https://ntfy.sh"
 topic_env = "NOTIFY_NTFY_TOPIC"
 token_env = "NOTIFY_NTFY_TOKEN"
 
+[channels.chat]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+
 [channels.automation]
 type = "webhook"
 url_env = "NOTIFY_WEBHOOK_URL"

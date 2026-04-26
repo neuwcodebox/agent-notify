@@ -71,6 +71,9 @@ telegram
 discord-webhook
 discord-bot
 ntfy
+slack-webhook
+pushover
+gotify
 webhook
 file-log
 ```
@@ -99,6 +102,9 @@ TelegramProvider
 DiscordWebhookProvider
 DiscordBotProvider
 NtfyProvider
+SlackWebhookProvider
+PushoverProvider
+GotifyProvider
 WebhookProvider
 FileLogProvider
 ```
@@ -116,6 +122,9 @@ telegram
 discord-webhook
 discord-bot
 ntfy
+slack-webhook
+pushover
+gotify
 webhook
 file-log
 ```
@@ -124,8 +133,6 @@ file-log
 
 ```text
 email       -> 후순위
-gotify      -> v1 제외
-slack       -> 후순위
 teams       -> 후순위
 mattermost  -> 후순위
 desktop     -> 제외, file-log로 대체
@@ -225,6 +232,9 @@ personal     telegram          ready
 team         discord-webhook   ready
 bot-team     discord-bot       missing NOTIFY_DISCORD_BOT_TOKEN
 phone        ntfy              ready
+chat         slack-webhook    ready
+mobile       pushover         ready
+self-hosted  gotify           ready
 local        file-log          ready
 automation   webhook           ready
 ```
@@ -330,6 +340,22 @@ type = "ntfy"
 server = "https://ntfy.sh"
 topic_env = "NOTIFY_NTFY_TOPIC"
 token_env = "NOTIFY_NTFY_TOKEN"
+
+[channels.chat]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
 
 [channels.automation]
 type = "webhook"
@@ -681,6 +707,176 @@ critical  urgent
 ---
 
 ## 9.5 webhook
+
+## 9.5 slack-webhook
+
+설정:
+
+```toml
+[channels.chat]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+allow_mentions = false
+```
+
+inline 예:
+
+```toml
+[channels.chat]
+type = "slack-webhook"
+webhook_url = "https://hooks.slack.com/services/..."
+```
+
+지원:
+
+```text
+- title
+- body
+- markdown text
+- priority prefix
+```
+
+첨부 파일:
+
+```text
+현재 Slack file upload를 지원하지 않는다.
+첨부 파일이 지정되면 에러 처리한다.
+```
+
+mention 정책:
+
+```text
+allow_mentions = false 기본값
+```
+
+`allow_mentions = false`일 때 mass mention 문자열을 비활성화해 전송한다.
+
+공식 SDK:
+
+```text
+Incoming Webhook은 단순 JSON POST 계약이므로 Rust SDK를 추가하지 않는다.
+```
+
+---
+
+## 9.6 pushover
+
+설정:
+
+```toml
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+device = "phone"
+sound = "pushover"
+```
+
+inline 예:
+
+```toml
+[channels.mobile]
+type = "pushover"
+token = "app-token"
+user = "user-or-group-key"
+```
+
+지원:
+
+```text
+- title
+- body
+- priority
+- device
+- sound
+```
+
+첨부 파일:
+
+```text
+현재 Pushover 이미지 첨부를 지원하지 않는다.
+첨부 파일이 지정되면 에러 처리한다.
+```
+
+priority 매핑:
+
+```text
+info      0
+success   0
+warning   0
+error     1
+critical  1
+```
+
+`critical`도 Pushover emergency priority 2로 매핑하지 않는다. emergency retry/receipt는 별도 설계가 필요하기 때문이다.
+
+공식 SDK:
+
+```text
+Pushover 공식 문서는 표준 HTTP 클라이언트 사용을 전제로 하므로 Rust SDK를 추가하지 않는다.
+```
+
+---
+
+## 9.7 gotify
+
+설정:
+
+```toml
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+priority = 5
+```
+
+inline 예:
+
+```toml
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token = "app-token"
+```
+
+지원:
+
+```text
+- title
+- body
+- markdown display hint
+- priority
+```
+
+첨부 파일:
+
+```text
+현재 Gotify 첨부 파일 또는 이미지 extras를 지원하지 않는다.
+첨부 파일이 지정되면 에러 처리한다.
+```
+
+priority 매핑:
+
+```text
+info      5
+success   5
+warning   6
+error     8
+critical  10
+```
+
+채널 설정의 `priority`가 있으면 메시지 priority 매핑보다 우선한다.
+
+공식 SDK:
+
+```text
+Gotify는 REST API와 gotify/cli를 제공하지만, provider 내부에서는 REST API에 직접 POST한다.
+```
+
+---
+
+## 9.8 webhook
 
 `webhook`은 임의 URL에 agent-notify 표준 포맷으로 알림을 전송하는 type이다.
 
@@ -1124,6 +1320,9 @@ README는 다음 구조가 좋다.
    - discord-webhook
    - discord-bot
    - ntfy
+   - slack-webhook
+   - pushover
+   - gotify
    - webhook
    - file-log
 7. Webhook protocol v1
@@ -1378,6 +1577,9 @@ telegram
 discord-webhook
 discord-bot
 ntfy
+slack-webhook
+pushover
+gotify
 webhook
 file-log
 webhook protocol v1
@@ -1391,8 +1593,6 @@ examples/notify.env.example
 
 ```text
 email
-gotify
-slack
 teams
 mattermost
 desktop notification
@@ -1422,8 +1622,11 @@ OS keychain
 7. discord-webhook provider
 8. telegram provider
 9. discord-bot provider
-10. Agent Skill 문서
-11. README/examples 정리
+10. slack-webhook provider
+11. pushover provider
+12. gotify provider
+13. Agent Skill 문서
+14. README/examples 정리
 ```
 
 `file-log`를 먼저 구현하면 외부 서비스 없이 CLI 동작과 메시지 모델을 검증할 수 있다.
@@ -1445,7 +1648,7 @@ channel:
   사용자가 선택하는 논리적 목적지 이름
 
 type:
-  telegram | discord-webhook | discord-bot | ntfy | webhook | file-log
+  telegram | discord-webhook | discord-bot | ntfy | slack-webhook | pushover | gotify | webhook | file-log
 
 secret:
   *_env 권장

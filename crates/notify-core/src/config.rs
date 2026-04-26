@@ -167,6 +167,9 @@ pub enum ChannelConfig {
     DiscordWebhook(DiscordWebhookConfig),
     DiscordBot(DiscordBotConfig),
     Ntfy(NtfyConfig),
+    SlackWebhook(SlackWebhookConfig),
+    Pushover(PushoverConfig),
+    Gotify(GotifyConfig),
     Webhook(WebhookConfig),
     FileLog(FileLogConfig),
 }
@@ -178,6 +181,9 @@ impl ChannelConfig {
             Self::DiscordWebhook(_) => "discord-webhook",
             Self::DiscordBot(_) => "discord-bot",
             Self::Ntfy(_) => "ntfy",
+            Self::SlackWebhook(_) => "slack-webhook",
+            Self::Pushover(_) => "pushover",
+            Self::Gotify(_) => "gotify",
             Self::Webhook(_) => "webhook",
             Self::FileLog(_) => "file-log",
         }
@@ -189,6 +195,9 @@ impl ChannelConfig {
             Self::DiscordWebhook(config) => config.validation_issues(channel, env),
             Self::DiscordBot(config) => config.validation_issues(channel, env),
             Self::Ntfy(config) => config.validation_issues(channel, env),
+            Self::SlackWebhook(config) => config.validation_issues(channel, env),
+            Self::Pushover(config) => config.validation_issues(channel, env),
+            Self::Gotify(config) => config.validation_issues(channel, env),
             Self::Webhook(config) => config.validation_issues(channel, env),
             Self::FileLog(config) => config.validation_issues(channel),
         }
@@ -326,6 +335,98 @@ impl NtfyConfig {
             self.token.as_deref(),
             self.token_env.as_deref(),
             false,
+            env,
+            &mut issues,
+        );
+        issues
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlackWebhookConfig {
+    pub webhook_url: Option<String>,
+    pub webhook_url_env: Option<String>,
+    pub username: Option<String>,
+    pub icon_emoji: Option<String>,
+    pub icon_url: Option<String>,
+    pub allow_mentions: Option<bool>,
+}
+
+impl SlackWebhookConfig {
+    fn validation_issues<E: EnvSource>(&self, channel: &str, env: &E) -> Vec<CheckIssue> {
+        let mut issues = Vec::new();
+        validate_secret_pair(
+            channel,
+            "webhook_url",
+            self.webhook_url.as_deref(),
+            self.webhook_url_env.as_deref(),
+            true,
+            env,
+            &mut issues,
+        );
+        issues
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PushoverConfig {
+    pub token: Option<String>,
+    pub token_env: Option<String>,
+    pub user: Option<String>,
+    pub user_env: Option<String>,
+    pub device: Option<String>,
+    pub sound: Option<String>,
+}
+
+impl PushoverConfig {
+    fn validation_issues<E: EnvSource>(&self, channel: &str, env: &E) -> Vec<CheckIssue> {
+        let mut issues = Vec::new();
+        validate_secret_pair(
+            channel,
+            "token",
+            self.token.as_deref(),
+            self.token_env.as_deref(),
+            true,
+            env,
+            &mut issues,
+        );
+        validate_secret_pair(
+            channel,
+            "user",
+            self.user.as_deref(),
+            self.user_env.as_deref(),
+            true,
+            env,
+            &mut issues,
+        );
+        issues
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GotifyConfig {
+    pub server: String,
+    pub token: Option<String>,
+    pub token_env: Option<String>,
+    pub priority: Option<i64>,
+}
+
+impl GotifyConfig {
+    fn validation_issues<E: EnvSource>(&self, channel: &str, env: &E) -> Vec<CheckIssue> {
+        let mut issues = Vec::new();
+        if self.server.trim().is_empty() {
+            issues.push(CheckIssue::error(
+                Some(channel),
+                "MISSING_FIELD",
+                format!("channel \"{channel}\" is missing server"),
+            ));
+        }
+        validate_secret_pair(
+            channel,
+            "token",
+            self.token.as_deref(),
+            self.token_env.as_deref(),
+            true,
             env,
             &mut issues,
         );
@@ -621,6 +722,81 @@ parse_mode = "markdown"
     }
 
     #[test]
+    fn loads_added_http_channel_types() {
+        let config: Config = toml::from_str(
+            r#"
+default_channel = "slack"
+
+[channels.slack]
+type = "slack-webhook"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+username = "Agent Notify"
+
+[channels.mobile]
+type = "pushover"
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+device = "phone"
+
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+priority = 7
+"#,
+        )
+        .unwrap();
+
+        assert!(matches!(
+            config.channels.get("slack"),
+            Some(ChannelConfig::SlackWebhook(_))
+        ));
+        assert!(matches!(
+            config.channels.get("mobile"),
+            Some(ChannelConfig::Pushover(_))
+        ));
+        assert!(matches!(
+            config.channels.get("self_hosted"),
+            Some(ChannelConfig::Gotify(_))
+        ));
+        assert_eq!(config.channels["slack"].type_name(), "slack-webhook");
+        assert_eq!(config.channels["mobile"].type_name(), "pushover");
+        assert_eq!(config.channels["self_hosted"].type_name(), "gotify");
+    }
+
+    #[test]
+    fn validates_added_http_channel_secrets() {
+        let config: Config = toml::from_str(
+            r#"
+default_channel = "slack"
+
+[channels.slack]
+type = "slack-webhook"
+webhook_url = "https://hooks.slack.com/services/test"
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+
+[channels.mobile]
+type = "pushover"
+token = "app-token"
+user_env = "NOTIFY_PUSHOVER_USER"
+
+[channels.self_hosted]
+type = "gotify"
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+"#,
+        )
+        .unwrap();
+
+        let issues = config.validation_issues_with(&MapEnv(BTreeSet::new()));
+
+        assert_issue(&issues, "slack", "SECRET_CONFLICT", IssueLevel::Error);
+        assert_issue(&issues, "mobile", "INLINE_SECRET", IssueLevel::Warning);
+        assert_issue(&issues, "mobile", "MISSING_ENV", IssueLevel::Error);
+        assert_issue(&issues, "self_hosted", "MISSING_ENV", IssueLevel::Error);
+    }
+
+    #[test]
     fn rejects_unsupported_type_during_deserialize() {
         let result = toml::from_str::<Config>(
             r#"
@@ -632,5 +808,16 @@ type = "email"
         );
 
         assert!(result.is_err());
+    }
+
+    fn assert_issue(issues: &[CheckIssue], channel: &str, code: &str, level: IssueLevel) {
+        assert!(
+            issues.iter().any(|issue| {
+                issue.channel.as_deref() == Some(channel)
+                    && issue.code == code
+                    && issue.level == level
+            }),
+            "missing {level:?} issue {code} for channel {channel}: {issues:#?}"
+        );
     }
 }
