@@ -6,46 +6,70 @@ path = "./notify-log"
 
 [channels.personal]
 type = "telegram"
+# Required.
 bot_token_env = "NOTIFY_TELEGRAM_BOT_TOKEN"
 chat_id_env = "NOTIFY_TELEGRAM_CHAT_ID"
-parse_mode = "plain"
+# Optional. Defaults to "plain". Supported: "plain", "html", "markdown-v2".
+# parse_mode = "plain"
 
 [channels.team]
 type = "discord-webhook"
+# Required.
 webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
+# Optional display controls.
+# username = "Agent Notify"
+# avatar_url = "https://example.com/avatar.png"
+# allow_mentions = false
 
 [channels.bot_team]
 type = "discord-bot"
+# Required.
 bot_token_env = "NOTIFY_DISCORD_BOT_TOKEN"
 channel_id_env = "NOTIFY_DISCORD_CHANNEL_ID"
-allow_mentions = false
+# Optional. Defaults to false.
+# allow_mentions = false
 
 [channels.phone]
 type = "ntfy"
-server = "https://ntfy.sh"
+# Required.
 topic_env = "NOTIFY_NTFY_TOPIC"
-token_env = "NOTIFY_NTFY_TOKEN"
+# Optional. Defaults to "https://ntfy.sh".
+# server = "https://ntfy.sh"
+# Optional bearer token, depending on your ntfy server/topic.
+# token_env = "NOTIFY_NTFY_TOKEN"
 
 [channels.chat]
 type = "slack-webhook"
+# Required.
 webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
+# Optional display controls.
+# username = "Agent Notify"
+# icon_emoji = ":robot_face:"
+# icon_url = "https://example.com/icon.png"
+# allow_mentions = false
 
 [channels.mobile]
 type = "pushover"
+# Required.
 token_env = "NOTIFY_PUSHOVER_TOKEN"
 user_env = "NOTIFY_PUSHOVER_USER"
+# Optional routing and sound controls.
+# device = "phone"
+# sound = "pushover"
 
 [channels.self_hosted]
 type = "gotify"
+# Required.
 server = "https://gotify.example.com"
 token_env = "NOTIFY_GOTIFY_TOKEN"
+# Optional. Overrides the priority mapped from --priority.
+# priority = 5
 
 [channels.automation]
 type = "webhook"
+# Required.
 url_env = "NOTIFY_WEBHOOK_URL"
-auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
-timeout_seconds = 15
+# Optional Authorization header.
+# auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
+# Optional. Defaults to 15.
+# timeout_seconds = 15

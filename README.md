@@ -75,6 +75,8 @@ This writes a local JSONL log under `./notify-log`.
 
 A `channel` is the configured destination name that users and agents select, such as `personal`, `team`, `phone`, `local`, or `automation`.
 
+Channel names are user-defined. The examples in this document are conventional names only; you can name channels for your own workflow, such as `ops`, `alerts`, `desktop-log`, or `prod-slack`.
+
 A channel has a `type`, which controls how the notification is delivered:
 
 ```text
@@ -99,61 +101,6 @@ Agents should use channel names and should not need to know service credentials 
 2. `./notify.toml`
 3. `~/.config/agent-notify/config.toml`
 
-Example:
-
-```toml
-default_channel = "personal"
-
-[channels.personal]
-type = "telegram"
-bot_token_env = "NOTIFY_TELEGRAM_BOT_TOKEN"
-chat_id_env = "NOTIFY_TELEGRAM_CHAT_ID"
-parse_mode = "plain"
-
-[channels.team]
-type = "discord-webhook"
-webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
-
-[channels.bot_team]
-type = "discord-bot"
-bot_token_env = "NOTIFY_DISCORD_BOT_TOKEN"
-channel_id_env = "NOTIFY_DISCORD_CHANNEL_ID"
-allow_mentions = false
-
-[channels.phone]
-type = "ntfy"
-server = "https://ntfy.sh"
-topic_env = "NOTIFY_NTFY_TOPIC"
-token_env = "NOTIFY_NTFY_TOKEN"
-
-[channels.chat]
-type = "slack-webhook"
-webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
-
-[channels.mobile]
-type = "pushover"
-token_env = "NOTIFY_PUSHOVER_TOKEN"
-user_env = "NOTIFY_PUSHOVER_USER"
-
-[channels.self_hosted]
-type = "gotify"
-server = "https://gotify.example.com"
-token_env = "NOTIFY_GOTIFY_TOKEN"
-
-[channels.automation]
-type = "webhook"
-url_env = "NOTIFY_WEBHOOK_URL"
-auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
-
-[channels.local]
-type = "file-log"
-path = "./notify-log"
-```
-
 Sample files are included under:
 
 ```text
@@ -161,7 +108,7 @@ examples/notify.toml
 examples/notify.env.example
 ```
 
-## Secrets
+### Secrets
 
 Secret-like values can be configured inline or through environment variables.
 
@@ -203,6 +150,179 @@ webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
 ```
 
 Use either the inline field or the `_env` field, not both.
+
+### Channel Types
+
+#### `file-log`
+
+Stores notifications in a local JSONL file and copies attachments under a child directory.
+
+```toml
+[channels.local]
+type = "file-log"
+path = "./notify-log"
+```
+
+Use this for local testing or CI verification.
+
+#### `telegram`
+
+```toml
+[channels.personal]
+type = "telegram"
+
+# Required. Use *_env for shared configs and agent workflows.
+bot_token_env = "NOTIFY_TELEGRAM_BOT_TOKEN"
+chat_id_env = "NOTIFY_TELEGRAM_CHAT_ID"
+
+# Quick local setup can use inline values instead:
+# bot_token = "123456:ABC..."
+# chat_id = "123456789"
+
+# Optional. Defaults to "plain". Supported: "plain", "html", "markdown-v2".
+# parse_mode = "plain"
+```
+
+#### `discord-webhook`
+
+```toml
+[channels.team]
+type = "discord-webhook"
+
+# Required.
+webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
+
+# Quick local setup can use an inline URL instead:
+# webhook_url = "https://discord.com/api/webhooks/..."
+
+# Optional display controls.
+# username = "Agent Notify"
+# avatar_url = "https://example.com/avatar.png"
+# allow_mentions defaults to false. Set true to allow Discord mentions.
+# allow_mentions = false
+```
+
+#### `discord-bot`
+
+```toml
+[channels.bot_team]
+type = "discord-bot"
+
+# Required.
+bot_token_env = "NOTIFY_DISCORD_BOT_TOKEN"
+channel_id_env = "NOTIFY_DISCORD_CHANNEL_ID"
+
+# Quick local setup can use inline values instead:
+# bot_token = "..."
+# channel_id = "123456789012345678"
+
+# Optional. Defaults to false.
+# allow_mentions = false
+```
+
+#### `ntfy`
+
+```toml
+[channels.phone]
+type = "ntfy"
+
+# Required.
+topic_env = "NOTIFY_NTFY_TOPIC"
+
+# Quick local setup can use an inline topic instead:
+# topic = "my-topic"
+
+# Optional. Defaults to "https://ntfy.sh".
+# server = "https://ntfy.sh"
+
+# Optional bearer token, depending on your ntfy server/topic.
+# token_env = "NOTIFY_NTFY_TOKEN"
+# token = "..."
+```
+
+#### `slack-webhook`
+
+```toml
+[channels.chat]
+type = "slack-webhook"
+
+# Required.
+webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
+
+# Quick local setup can use an inline URL instead:
+# webhook_url = "https://hooks.slack.com/services/..."
+
+# Optional display controls.
+# username = "Agent Notify"
+# icon_emoji = ":robot_face:"
+# icon_url = "https://example.com/icon.png"
+# allow_mentions defaults to false. Set true to allow Slack mass mentions.
+# allow_mentions = false
+```
+
+Incoming webhook messages are sent as JSON. Attachments are not supported by this channel type.
+
+#### `pushover`
+
+```toml
+[channels.mobile]
+type = "pushover"
+
+# Required.
+token_env = "NOTIFY_PUSHOVER_TOKEN"
+user_env = "NOTIFY_PUSHOVER_USER"
+
+# Quick local setup can use inline values instead:
+# token = "app-token"
+# user = "user-or-group-key"
+
+# Optional routing and sound controls.
+# device = "phone"
+# sound = "pushover"
+```
+
+Attachments are not supported by this channel type.
+
+#### `gotify`
+
+```toml
+[channels.self_hosted]
+type = "gotify"
+
+# Required.
+server = "https://gotify.example.com"
+token_env = "NOTIFY_GOTIFY_TOKEN"
+
+# Quick local setup can use an inline token instead:
+# token = "app-token"
+
+# Optional. Overrides the priority mapped from --priority.
+# priority = 5
+```
+
+Attachments are not supported by this channel type.
+
+#### `webhook`
+
+```toml
+[channels.automation]
+type = "webhook"
+
+# Required.
+url_env = "NOTIFY_WEBHOOK_URL"
+
+# Quick local setup can use an inline URL instead:
+# url = "https://example.com/notify"
+
+# Optional Authorization header.
+# auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
+# auth_header = "Bearer secret"
+
+# Optional. Defaults to 15.
+# timeout_seconds = 15
+```
+
+The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `SPEC.md`.
 
 ## Commands
 
@@ -315,193 +435,6 @@ Send a test notification.
 notify test --channel local
 ```
 
-## Channel Configuration
-
-### `file-log`
-
-Stores notifications in a local JSONL file and copies attachments under a child directory.
-
-```toml
-[channels.local]
-type = "file-log"
-path = "./notify-log"
-```
-
-Use this for local testing or CI verification.
-
-### `telegram`
-
-```toml
-[channels.personal]
-type = "telegram"
-bot_token_env = "NOTIFY_TELEGRAM_BOT_TOKEN"
-chat_id_env = "NOTIFY_TELEGRAM_CHAT_ID"
-parse_mode = "plain"
-```
-
-Inline:
-
-```toml
-[channels.personal]
-type = "telegram"
-bot_token = "123456:ABC..."
-chat_id = "123456789"
-parse_mode = "plain"
-```
-
-Supported `parse_mode` values:
-
-```text
-plain
-html
-markdown-v2
-```
-
-### `discord-webhook`
-
-```toml
-[channels.team]
-type = "discord-webhook"
-webhook_url_env = "NOTIFY_DISCORD_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
-```
-
-Inline:
-
-```toml
-[channels.team]
-type = "discord-webhook"
-webhook_url = "https://discord.com/api/webhooks/..."
-```
-
-### `discord-bot`
-
-```toml
-[channels.bot_team]
-type = "discord-bot"
-bot_token_env = "NOTIFY_DISCORD_BOT_TOKEN"
-channel_id_env = "NOTIFY_DISCORD_CHANNEL_ID"
-allow_mentions = false
-```
-
-Inline:
-
-```toml
-[channels.bot_team]
-type = "discord-bot"
-bot_token = "..."
-channel_id = "123456789012345678"
-allow_mentions = false
-```
-
-### `ntfy`
-
-```toml
-[channels.phone]
-type = "ntfy"
-server = "https://ntfy.sh"
-topic_env = "NOTIFY_NTFY_TOPIC"
-token_env = "NOTIFY_NTFY_TOKEN"
-```
-
-Inline:
-
-```toml
-[channels.phone]
-type = "ntfy"
-server = "https://ntfy.sh"
-topic = "my-topic"
-token = "..."
-```
-
-`token` is optional, depending on your ntfy server and topic configuration.
-
-### `slack-webhook`
-
-```toml
-[channels.chat]
-type = "slack-webhook"
-webhook_url_env = "NOTIFY_SLACK_WEBHOOK_URL"
-username = "Agent Notify"
-allow_mentions = false
-```
-
-Inline:
-
-```toml
-[channels.chat]
-type = "slack-webhook"
-webhook_url = "https://hooks.slack.com/services/..."
-```
-
-Incoming webhook messages are sent as JSON. Attachments are not supported by this channel type.
-
-### `pushover`
-
-```toml
-[channels.mobile]
-type = "pushover"
-token_env = "NOTIFY_PUSHOVER_TOKEN"
-user_env = "NOTIFY_PUSHOVER_USER"
-device = "phone"
-sound = "pushover"
-```
-
-Inline:
-
-```toml
-[channels.mobile]
-type = "pushover"
-token = "app-token"
-user = "user-or-group-key"
-```
-
-`device` and `sound` are optional. Attachments are not supported by this channel type.
-
-### `gotify`
-
-```toml
-[channels.self_hosted]
-type = "gotify"
-server = "https://gotify.example.com"
-token_env = "NOTIFY_GOTIFY_TOKEN"
-priority = 5
-```
-
-Inline:
-
-```toml
-[channels.self_hosted]
-type = "gotify"
-server = "https://gotify.example.com"
-token = "app-token"
-```
-
-`priority` is optional. When omitted, `notify` maps the message priority to a Gotify numeric priority. Attachments are not supported by this channel type.
-
-### `webhook`
-
-```toml
-[channels.automation]
-type = "webhook"
-url_env = "NOTIFY_WEBHOOK_URL"
-auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
-timeout_seconds = 15
-```
-
-Inline:
-
-```toml
-[channels.automation]
-type = "webhook"
-url = "https://example.com/notify"
-auth_header = "Bearer secret"
-timeout_seconds = 15
-```
-
-The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `SPEC.md`.
-
 ## Webhook Protocol v1
 
 The `webhook` channel sends the agent-notify webhook protocol v1 payload.
@@ -571,7 +504,6 @@ default_channel = "phone"
 
 [channels.phone]
 type = "ntfy"
-server = "https://ntfy.sh"
 topic_env = "NOTIFY_NTFY_TOPIC"
 ```
 
@@ -589,12 +521,10 @@ default_channel = "automation"
 [channels.automation]
 type = "webhook"
 url_env = "NOTIFY_WEBHOOK_URL"
-auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
 ```
 
 ```bash
 export NOTIFY_WEBHOOK_URL="https://example.com/notify"
-export NOTIFY_WEBHOOK_AUTH_HEADER="Bearer secret"
 
 notify send --title "Report ready" --body "The report is ready." --file ./report.pdf
 ```

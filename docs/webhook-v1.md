@@ -7,17 +7,22 @@ Configuration:
 ```toml
 [channels.automation]
 type = "webhook"
+
+# Required. Use *_env for shared configs and agent workflows.
 url_env = "NOTIFY_WEBHOOK_URL"
-auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
-timeout_seconds = 15
+
+# Quick local setup can use an inline URL instead:
+# url = "https://example.com/notify"
+
+# Optional Authorization header.
+# auth_header_env = "NOTIFY_WEBHOOK_AUTH_HEADER"
+# auth_header = "Bearer secret"
+
+# Optional. Defaults to 15.
+# timeout_seconds = 15
 ```
 
-Defaults:
-
-```text
-method = POST
-timeout_seconds = 15
-```
+Requests always use HTTP `POST`.
 
 When `auth_header` or `auth_header_env` is configured, its resolved value is sent as the HTTP `Authorization` header.
 
