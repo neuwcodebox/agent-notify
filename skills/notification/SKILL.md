@@ -56,6 +56,12 @@ Common `notify send` options:
 --config <path>        Use a specific config file.
 ```
 
+## Network Access
+
+External channel types such as `telegram`, `discord-webhook`, `discord-bot`, `ntfy`, and `webhook` require network access.
+
+When the user asks to send a real external notification or verify external delivery with `notify test`, run the command with escalated sandbox permissions immediately instead of first attempting it in a restricted network sandbox.
+
 ## Channel Model
 
 A channel is a configured notification destination.
