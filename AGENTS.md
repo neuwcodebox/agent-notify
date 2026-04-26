@@ -44,3 +44,7 @@ Do not let one provider’s quirks reshape the common notification model unless 
 - `PLAN.md`: implementation sequence
 - `README.md`: user-facing usage
 - `AGENTS.md`: coding guardrails only
+
+## Skill Documentation
+
+Keep skill docs brief and operational. Do not duplicate detailed JSON schemas, output contracts, or implementation behavior from `SPEC.md`; add only the minimal command guidance and examples an agent needs to use the feature.

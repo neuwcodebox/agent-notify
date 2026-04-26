@@ -1,12 +1,14 @@
-use std::{path::PathBuf, process::ExitCode, str::FromStr};
+use std::{collections::HashSet, path::PathBuf, process::ExitCode, str::FromStr};
 
 use clap::{Args, Parser, Subcommand};
 use notify_core::{
     Attachment, CheckIssue, Config, ConfigLoad, DryRunAttachment, DryRunMessage, DryRunOutput,
-    ErrorOutput, IssueLevel, MessageFormat, NotifyError, NotifyMessage, Priority, Result,
-    SendOutput, provider::check_file_log_paths, send_notification,
+    DryRunResultOutput, ErrorBody, ErrorOutput, IssueLevel, MessageFormat, NotifyError,
+    NotifyMessage, Priority, Result, SendOutput, SendResultOutput, config::ChannelConfig,
+    provider::check_file_log_paths, send_notification,
 };
 use serde_json::json;
+use tokio::task::JoinSet;
 
 #[derive(Debug, Parser)]
 #[command(name = "notify")]
@@ -51,7 +53,7 @@ struct TestArgs {
 #[derive(Debug, Args)]
 struct SendArgs {
     #[arg(long)]
-    channel: Option<String>,
+    channel: Vec<String>,
     #[arg(long)]
     title: String,
     #[arg(long)]
@@ -109,8 +111,7 @@ async fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
         Command::Send(args) => {
             let loaded = ConfigLoad::load(cli.config.as_deref())?;
-            run_send(&loaded.config, args).await?;
-            Ok(ExitCode::SUCCESS)
+            run_send(&loaded.config, args).await
         }
         Command::Channels(args) => {
             let loaded = ConfigLoad::load(cli.config.as_deref())?;
@@ -123,17 +124,13 @@ async fn run(cli: Cli) -> Result<ExitCode> {
         }
         Command::Test(args) => {
             let loaded = ConfigLoad::load(cli.config.as_deref())?;
-            run_test(&loaded.config, args).await?;
-            Ok(ExitCode::SUCCESS)
+            run_test(&loaded.config, args).await
         }
     }
 }
 
-async fn run_send(config: &Config, args: SendArgs) -> Result<()> {
-    let channel_name = config.resolve_channel_name(args.channel.as_deref())?;
-    let channel = config.channel(channel_name)?;
-    ensure_channel_ready(config, channel_name)?;
-
+async fn run_send(config: &Config, args: SendArgs) -> Result<ExitCode> {
+    let channels = resolve_send_channels(config, &args.channel)?;
     let message = build_message(
         args.title,
         args.body,
@@ -145,30 +142,26 @@ async fn run_send(config: &Config, args: SendArgs) -> Result<()> {
     )?;
 
     if args.dry_run {
-        let output = build_dry_run_output(channel_name, channel.type_name(), &message);
+        let output = build_dry_run_output(&channels, &message);
         print_dry_run_output(&output, &message, args.json)?;
-        return Ok(());
+        return Ok(ExitCode::SUCCESS);
     }
 
-    let result = send_notification(channel_name, channel, &message).await?;
-    let output = SendOutput {
-        ok: true,
-        channel: channel_name.to_string(),
-        channel_type: channel.type_name().to_string(),
-        id: result.id,
-        sent: true,
-        dry_run: false,
-        attachments: result.attachments,
-    };
+    let output = send_to_channels(config, channels, &message).await?;
+    let ok = output.ok;
     print_send_output(&output, &message, args.json)?;
-    Ok(())
+    Ok(if ok {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
-async fn run_test(config: &Config, args: TestArgs) -> Result<()> {
+async fn run_test(config: &Config, args: TestArgs) -> Result<ExitCode> {
     run_send(
         config,
         SendArgs {
-            channel: args.channel,
+            channel: args.channel.into_iter().collect(),
             title: "agent-notify test".to_string(),
             body: Some("This is a test notification from agent-notify.".to_string()),
             body_file: None,
@@ -181,6 +174,123 @@ async fn run_test(config: &Config, args: TestArgs) -> Result<()> {
         },
     )
     .await
+}
+
+async fn send_to_channels(
+    config: &Config,
+    channels: Vec<ResolvedChannel>,
+    message: &NotifyMessage,
+) -> Result<SendOutput> {
+    let mut completed = Vec::new();
+    let mut tasks = JoinSet::new();
+
+    for (index, channel) in channels.into_iter().enumerate() {
+        if let Err(error) = ensure_channel_ready(config, &channel.name) {
+            completed.push((index, send_error_output(channel, &error)));
+            continue;
+        }
+
+        let message = message.clone();
+        tasks.spawn(async move {
+            let result = send_notification(&channel.name, &channel.config, &message).await;
+            (index, send_result_output(channel, result))
+        });
+    }
+
+    while let Some(result) = tasks.join_next().await {
+        completed.push(result.map_err(|error| NotifyError::Provider(error.to_string()))?);
+    }
+
+    completed.sort_by_key(|(index, _)| *index);
+    let results = completed
+        .into_iter()
+        .map(|(_, result)| result)
+        .collect::<Vec<_>>();
+    let ok = results.iter().all(|result| result.ok);
+
+    Ok(SendOutput {
+        ok,
+        sent: ok,
+        dry_run: false,
+        results,
+    })
+}
+
+fn send_result_output(
+    channel: ResolvedChannel,
+    result: Result<notify_core::SendResult>,
+) -> SendResultOutput {
+    match result {
+        Ok(result) => SendResultOutput {
+            ok: true,
+            channel: channel.name,
+            channel_type: channel.channel_type,
+            id: Some(result.id),
+            sent: true,
+            dry_run: false,
+            attachments: Some(result.attachments),
+            error: None,
+        },
+        Err(error) => send_error_output(channel, &error),
+    }
+}
+
+fn send_error_output(channel: ResolvedChannel, error: &NotifyError) -> SendResultOutput {
+    SendResultOutput {
+        ok: false,
+        channel: channel.name,
+        channel_type: channel.channel_type,
+        id: None,
+        sent: false,
+        dry_run: false,
+        attachments: None,
+        error: Some(ErrorBody {
+            code: error.code().to_string(),
+            message: error.to_string(),
+        }),
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedChannel {
+    name: String,
+    channel_type: String,
+    config: ChannelConfig,
+}
+
+fn resolve_send_channels(config: &Config, requested: &[String]) -> Result<Vec<ResolvedChannel>> {
+    let names = if requested.is_empty() {
+        vec![config.resolve_channel_name(None)?.to_string()]
+    } else {
+        let mut seen = HashSet::new();
+        for name in requested {
+            if !seen.insert(name.as_str()) {
+                return Err(NotifyError::InvalidInput(format!(
+                    "channel \"{name}\" was specified more than once"
+                )));
+            }
+        }
+        requested
+            .iter()
+            .map(|name| {
+                config
+                    .resolve_channel_name(Some(name))
+                    .map(ToOwned::to_owned)
+            })
+            .collect::<Result<Vec<_>>>()?
+    };
+
+    names
+        .into_iter()
+        .map(|name| {
+            let channel = config.channel(&name)?;
+            Ok(ResolvedChannel {
+                name,
+                channel_type: channel.type_name().to_string(),
+                config: channel.clone(),
+            })
+        })
+        .collect()
 }
 
 fn run_channels(config: &Config, json_output: bool) -> Result<()> {
@@ -334,28 +444,33 @@ fn issue_for_channel(
     issues
 }
 
-fn build_dry_run_output(
-    channel_name: &str,
-    channel_type: &str,
-    message: &NotifyMessage,
-) -> DryRunOutput {
+fn build_dry_run_output(channels: &[ResolvedChannel], message: &NotifyMessage) -> DryRunOutput {
     DryRunOutput {
         ok: true,
         dry_run: true,
-        channel: channel_name.to_string(),
-        channel_type: channel_type.to_string(),
-        message: DryRunMessage {
-            title: message.title.clone(),
-            body: message.body.clone(),
-            format: message.format,
-            priority: message.priority,
-            tags: message.tags.clone(),
-        },
-        attachments: message
-            .attachments
+        sent: false,
+        results: channels
             .iter()
-            .map(|attachment| DryRunAttachment {
-                path: path_to_string(&attachment.path),
+            .map(|channel| DryRunResultOutput {
+                ok: true,
+                channel: channel.name.clone(),
+                channel_type: channel.channel_type.clone(),
+                sent: false,
+                dry_run: true,
+                message: DryRunMessage {
+                    title: message.title.clone(),
+                    body: message.body.clone(),
+                    format: message.format,
+                    priority: message.priority,
+                    tags: message.tags.clone(),
+                },
+                attachments: message
+                    .attachments
+                    .iter()
+                    .map(|attachment| DryRunAttachment {
+                        path: path_to_string(&attachment.path),
+                    })
+                    .collect(),
             })
             .collect(),
     }
@@ -373,8 +488,6 @@ fn print_dry_run_output(
 
     println!("Dry run: no notification was sent.");
     println!();
-    println!("Channel: {}", output.channel);
-    println!("Type: {}", output.channel_type);
     println!("Title: {}", message.title);
     println!("Priority: {}", message.priority);
     println!("Format: {}", message.format);
@@ -387,6 +500,10 @@ fn print_dry_run_output(
         for attachment in &message.attachments {
             println!("- {}", attachment.path.display());
         }
+    }
+    println!("Channels:");
+    for result in &output.results {
+        println!("- {} ({})", result.channel, result.channel_type);
     }
 
     Ok(())
@@ -402,12 +519,33 @@ fn print_send_output(
         return Ok(());
     }
 
-    println!("Sent notification.");
+    if output.ok {
+        println!("Sent notification.");
+    } else {
+        println!("Notification completed with failures.");
+    }
     println!();
-    println!("Channel: {}", output.channel);
-    println!("Type: {}", output.channel_type);
     println!("Title: {}", message.title);
-    println!("Attachments: {}", output.attachments.len());
+    println!("Channels:");
+    for result in &output.results {
+        if result.ok {
+            println!(
+                "- {} ({}) sent, attachments: {}",
+                result.channel,
+                result.channel_type,
+                result
+                    .attachments
+                    .as_ref()
+                    .map(|attachments| attachments.len())
+                    .unwrap_or(0)
+            );
+        } else if let Some(error) = &result.error {
+            println!(
+                "- {} ({}) failed: {}",
+                result.channel, result.channel_type, error.message
+            );
+        }
+    }
 
     Ok(())
 }
@@ -499,7 +637,7 @@ mod tests {
         run_send(
             &config,
             SendArgs {
-                channel: None,
+                channel: Vec::new(),
                 title: "Dry run".to_string(),
                 body: Some("No write.".to_string()),
                 body_file: None,
@@ -532,48 +670,252 @@ mod tests {
         )
         .unwrap();
 
-        let output = build_dry_run_output("local", "file-log", &message);
+        let channels = vec![ResolvedChannel {
+            name: "local".to_string(),
+            channel_type: "file-log".to_string(),
+            config: ChannelConfig::FileLog(FileLogConfig {
+                path: "notify-log".into(),
+            }),
+        }];
+        let output = build_dry_run_output(&channels, &message);
         let json = serde_json::to_value(output).unwrap();
 
         assert_eq!(json["ok"], true);
         assert_eq!(json["dry_run"], true);
-        assert_eq!(json["channel"], "local");
-        assert_eq!(json["type"], "file-log");
-        assert_eq!(json["message"]["title"], "Chart ready");
-        assert_eq!(json["message"]["body"], "Attached chart.");
-        assert_eq!(json["message"]["format"], "text");
-        assert_eq!(json["message"]["priority"], "info");
-        assert_eq!(json["message"]["tags"], serde_json::json!(["chart"]));
+        assert_eq!(json["sent"], false);
+        assert_eq!(json["results"][0]["ok"], true);
+        assert_eq!(json["results"][0]["channel"], "local");
+        assert_eq!(json["results"][0]["type"], "file-log");
+        assert_eq!(json["results"][0]["sent"], false);
+        assert_eq!(json["results"][0]["dry_run"], true);
+        assert_eq!(json["results"][0]["message"]["title"], "Chart ready");
+        assert_eq!(json["results"][0]["message"]["body"], "Attached chart.");
+        assert_eq!(json["results"][0]["message"]["format"], "text");
+        assert_eq!(json["results"][0]["message"]["priority"], "info");
         assert_eq!(
-            json["attachments"][0]["path"],
+            json["results"][0]["message"]["tags"],
+            serde_json::json!(["chart"])
+        );
+        assert_eq!(
+            json["results"][0]["attachments"][0]["path"],
             path_to_string(&attachment_path)
         );
-        assert!(json.get("id").is_none());
-        assert!(json.get("sent").is_none());
+        assert!(json["results"][0].get("id").is_none());
     }
 
     #[test]
     fn sent_json_uses_spec_shape_without_dry_run_message() {
         let output = SendOutput {
             ok: true,
-            channel: "personal".to_string(),
-            channel_type: "telegram".to_string(),
-            id: "01J00000000000000000000000".to_string(),
             sent: true,
             dry_run: false,
-            attachments: Vec::new(),
+            results: vec![SendResultOutput {
+                ok: true,
+                channel: "personal".to_string(),
+                channel_type: "telegram".to_string(),
+                id: Some("01J00000000000000000000000".to_string()),
+                sent: true,
+                dry_run: false,
+                attachments: Some(Vec::new()),
+                error: None,
+            }],
         };
 
         let json = serde_json::to_value(output).unwrap();
 
         assert_eq!(json["ok"], true);
-        assert_eq!(json["channel"], "personal");
-        assert_eq!(json["type"], "telegram");
-        assert_eq!(json["id"], "01J00000000000000000000000");
         assert_eq!(json["sent"], true);
         assert_eq!(json["dry_run"], false);
-        assert_eq!(json["attachments"], serde_json::json!([]));
-        assert!(json.get("message").is_none());
+        assert_eq!(json["results"][0]["ok"], true);
+        assert_eq!(json["results"][0]["channel"], "personal");
+        assert_eq!(json["results"][0]["type"], "telegram");
+        assert_eq!(json["results"][0]["id"], "01J00000000000000000000000");
+        assert_eq!(json["results"][0]["sent"], true);
+        assert_eq!(json["results"][0]["dry_run"], false);
+        assert_eq!(json["results"][0]["attachments"], serde_json::json!([]));
+        assert!(json["results"][0].get("message").is_none());
+    }
+
+    #[test]
+    fn default_channel_resolves_to_single_result_array() {
+        let config = config_with_channels(vec![(
+            "local",
+            ChannelConfig::FileLog(FileLogConfig {
+                path: "notify-log".into(),
+            }),
+        )]);
+        let message = NotifyMessage::new(
+            "Default".to_string(),
+            Some("Uses default.".to_string()),
+            MessageFormat::Text,
+            Priority::Info,
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap();
+
+        let channels = resolve_send_channels(&config, &[]).unwrap();
+        let output = build_dry_run_output(&channels, &message);
+        let json = serde_json::to_value(output).unwrap();
+
+        assert_eq!(json["ok"], true);
+        assert_eq!(json["results"].as_array().unwrap().len(), 1);
+        assert_eq!(json["results"][0]["channel"], "local");
+        assert_eq!(json["results"][0]["type"], "file-log");
+    }
+
+    #[test]
+    fn duplicate_send_channel_is_invalid_input() {
+        let config = config_with_channels(vec![(
+            "local",
+            ChannelConfig::FileLog(FileLogConfig {
+                path: "notify-log".into(),
+            }),
+        )]);
+
+        let error = resolve_send_channels(&config, &["local".to_string(), "local".to_string()])
+            .unwrap_err();
+
+        assert_eq!(error.code(), "INVALID_INPUT");
+        assert!(error.to_string().contains("specified more than once"));
+    }
+
+    #[tokio::test]
+    async fn sends_to_multiple_file_log_channels() {
+        let dir = tempdir().unwrap();
+        let local_path = dir.path().join("local-log");
+        let audit_path = dir.path().join("audit-log");
+        let config = config_with_channels(vec![
+            (
+                "local",
+                ChannelConfig::FileLog(FileLogConfig {
+                    path: local_path.clone(),
+                }),
+            ),
+            (
+                "audit",
+                ChannelConfig::FileLog(FileLogConfig {
+                    path: audit_path.clone(),
+                }),
+            ),
+        ]);
+        let message = NotifyMessage::new(
+            "Done".to_string(),
+            Some("Task completed.".to_string()),
+            MessageFormat::Text,
+            Priority::Info,
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap();
+        let channels =
+            resolve_send_channels(&config, &["local".to_string(), "audit".to_string()]).unwrap();
+
+        let output = send_to_channels(&config, channels, &message).await.unwrap();
+
+        assert!(output.ok);
+        assert!(output.sent);
+        assert_eq!(output.results.len(), 2);
+        assert_eq!(output.results[0].channel, "local");
+        assert_eq!(output.results[1].channel, "audit");
+        assert!(local_path.join("notifications.jsonl").exists());
+        assert!(audit_path.join("notifications.jsonl").exists());
+    }
+
+    #[tokio::test]
+    async fn send_collects_success_and_failure_results() {
+        let dir = tempdir().unwrap();
+        let local_path = dir.path().join("local-log");
+        let config = config_with_channels(vec![
+            (
+                "local",
+                ChannelConfig::FileLog(FileLogConfig {
+                    path: local_path.clone(),
+                }),
+            ),
+            (
+                "phone",
+                ChannelConfig::Ntfy(NtfyConfig {
+                    server: None,
+                    topic: None,
+                    topic_env: Some("AGENT_NOTIFY_TEST_MISSING_ENV_DO_NOT_SET".to_string()),
+                    token: None,
+                    token_env: None,
+                }),
+            ),
+        ]);
+        let message = NotifyMessage::new(
+            "Mixed".to_string(),
+            Some("One channel fails.".to_string()),
+            MessageFormat::Text,
+            Priority::Info,
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap();
+        let channels =
+            resolve_send_channels(&config, &["local".to_string(), "phone".to_string()]).unwrap();
+
+        let output = send_to_channels(&config, channels, &message).await.unwrap();
+
+        assert!(!output.ok);
+        assert!(!output.sent);
+        assert_eq!(output.results.len(), 2);
+        assert!(output.results[0].ok);
+        assert_eq!(output.results[0].channel, "local");
+        assert!(!output.results[1].ok);
+        assert_eq!(output.results[1].channel, "phone");
+        assert_eq!(
+            output.results[1].error.as_ref().unwrap().code,
+            "MISSING_ENV"
+        );
+        assert!(local_path.join("notifications.jsonl").exists());
+    }
+
+    #[tokio::test]
+    async fn multi_channel_dry_run_does_not_write_file_logs() {
+        let dir = tempdir().unwrap();
+        let local_path = dir.path().join("local-log");
+        let audit_path = dir.path().join("audit-log");
+        let mut channels = BTreeMap::new();
+        channels.insert(
+            "local".to_string(),
+            ChannelConfig::FileLog(FileLogConfig {
+                path: local_path.clone(),
+            }),
+        );
+        channels.insert(
+            "audit".to_string(),
+            ChannelConfig::FileLog(FileLogConfig {
+                path: audit_path.clone(),
+            }),
+        );
+        let config = Config {
+            default_channel: Some("local".to_string()),
+            channels,
+        };
+
+        let code = run_send(
+            &config,
+            SendArgs {
+                channel: vec!["local".to_string(), "audit".to_string()],
+                title: "Dry run".to_string(),
+                body: Some("No write.".to_string()),
+                body_file: None,
+                files: Vec::new(),
+                priority: "info".to_string(),
+                format: "text".to_string(),
+                tags: Vec::new(),
+                dry_run: true,
+                json: true,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(code, ExitCode::SUCCESS);
+        assert!(!local_path.exists());
+        assert!(!audit_path.exists());
     }
 
     #[test]

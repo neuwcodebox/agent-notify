@@ -5,22 +5,43 @@ use crate::{MessageFormat, NotifyError, Priority, provider::StoredAttachment};
 #[derive(Debug, Serialize)]
 pub struct SendOutput {
     pub ok: bool,
+    pub sent: bool,
+    pub dry_run: bool,
+    pub results: Vec<SendResultOutput>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SendResultOutput {
+    pub ok: bool,
     pub channel: String,
     #[serde(rename = "type")]
     pub channel_type: String,
-    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub sent: bool,
     pub dry_run: bool,
-    pub attachments: Vec<StoredAttachment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<Vec<StoredAttachment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorBody>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct DryRunOutput {
     pub ok: bool,
     pub dry_run: bool,
+    pub sent: bool,
+    pub results: Vec<DryRunResultOutput>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DryRunResultOutput {
+    pub ok: bool,
     pub channel: String,
     #[serde(rename = "type")]
     pub channel_type: String,
+    pub sent: bool,
+    pub dry_run: bool,
     pub message: DryRunMessage,
     pub attachments: Vec<DryRunAttachment>,
 }

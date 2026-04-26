@@ -147,10 +147,20 @@ notify send \
   --body "The report was generated successfully."
 ```
 
+여러 channel로 같은 알림을 보낼 수 있다.
+
+```bash
+notify send \
+  --channel team \
+  --channel local \
+  --title "Done" \
+  --body "Task completed."
+```
+
 옵션:
 
 ```text
---channel <name>       사용할 channel 이름. 생략 시 default_channel 사용
+--channel <name>       사용할 channel 이름. 여러 번 지정 가능. 생략 시 default_channel 사용
 --title <text>         알림 제목
 --body <text>          알림 본문
 --body-file <path>     본문을 파일에서 읽음
@@ -185,6 +195,17 @@ format = "text"
 ```text
 title required
 body or file required
+```
+
+channel 규칙:
+
+```text
+- --channel을 생략하면 default_channel 하나로 전송한다.
+- --channel을 여러 번 지정하면 같은 메시지와 첨부 파일을 각 channel로 전송한다.
+- 같은 channel 이름을 한 명령에서 중복 지정하면 INVALID_INPUT 에러로 처리한다.
+- 여러 channel로 전송할 때는 channel 단위로 병렬 전송한다.
+- 일부 channel 전송이 실패해도 나머지 channel 결과를 수집한다.
+- 하나 이상의 channel이 실패하면 전체 종료 코드는 실패다.
 ```
 
 ---
@@ -950,18 +971,26 @@ Attachments:
 {
   "ok": true,
   "dry_run": true,
-  "channel": "local",
-  "type": "file-log",
-  "message": {
-    "title": "Chart ready",
-    "body": "Attached chart.",
-    "format": "text",
-    "priority": "info",
-    "tags": []
-  },
-  "attachments": [
+  "sent": false,
+  "results": [
     {
-      "path": "./chart.png"
+      "ok": true,
+      "channel": "local",
+      "type": "file-log",
+      "sent": false,
+      "dry_run": true,
+      "message": {
+        "title": "Chart ready",
+        "body": "Attached chart.",
+        "format": "text",
+        "priority": "info",
+        "tags": []
+      },
+      "attachments": [
+        {
+          "path": "./chart.png"
+        }
+      ]
     }
   ]
 }
@@ -1286,12 +1315,19 @@ JSON 출력:
 ```json
 {
   "ok": true,
-  "channel": "personal",
-  "type": "telegram",
-  "id": "01J00000000000000000000000",
   "sent": true,
   "dry_run": false,
-  "attachments": []
+  "results": [
+    {
+      "ok": true,
+      "channel": "personal",
+      "type": "telegram",
+      "id": "01J00000000000000000000000",
+      "sent": true,
+      "dry_run": false,
+      "attachments": []
+    }
+  ]
 }
 ```
 
@@ -1306,10 +1342,21 @@ JSON 실패:
 ```json
 {
   "ok": false,
-  "error": {
-    "code": "MISSING_ENV",
-    "message": "channel \"personal\" is missing environment variable NOTIFY_TELEGRAM_BOT_TOKEN"
-  }
+  "sent": false,
+  "dry_run": false,
+  "results": [
+    {
+      "ok": false,
+      "channel": "personal",
+      "type": "telegram",
+      "sent": false,
+      "dry_run": false,
+      "error": {
+        "code": "MISSING_ENV",
+        "message": "channel \"personal\" is missing environment variable NOTIFY_TELEGRAM_BOT_TOKEN"
+      }
+    }
+  ]
 }
 ```
 

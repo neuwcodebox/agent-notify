@@ -198,6 +198,12 @@ Use the default channel:
 notify send --title "Task completed" --body "Done."
 ```
 
+Send to multiple channels:
+
+```bash
+notify send --channel personal --channel team --title "Task completed" --body "Done."
+```
+
 Attach a file:
 
 ```bash
@@ -231,7 +237,7 @@ notify send \
 Common options:
 
 ```text
---channel <name>       Channel name. Uses default_channel if omitted.
+--channel <name>       Channel name. Can be repeated. Uses default_channel if omitted.
 --title <text>         Notification title.
 --body <text>          Notification body.
 --body-file <path>     Read body from a file.

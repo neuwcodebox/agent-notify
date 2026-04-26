@@ -43,7 +43,7 @@ For concrete scenario examples, see `examples.md`.
 Common `notify send` options:
 
 ```text
---channel <name>       Use a configured channel. Omit to use default_channel.
+--channel <name>       Use a configured channel. Can be repeated. Omit to use default_channel.
 --title <text>         Notification title. Required.
 --body <text>          Inline notification body.
 --body-file <path>     Read body from a file.
@@ -153,7 +153,7 @@ Do not use `--json` merely to make human-readable output quieter unless the user
 
 Use it only when the user asks to test the notification setup or when you are explicitly validating a new channel configuration.
 
-Dry run resolves the channel and renders the notification preview, but it does not send the notification, copy attachments, or prove that the destination service can receive the message. Use `notify test` when the goal is actual delivery verification.
+Dry run resolves the selected channels and renders the notification preview, but it does not send the notification, copy attachments, or prove that the destination service can receive the message. Use `notify test` when the goal is actual delivery verification.
 
 ## Rules
 
@@ -167,7 +167,7 @@ Follow these rules when using this skill:
 6. Do not send private source code, credentials, databases, `.env` files, key files, or large logs unless the user explicitly requested that exact content be sent.
 7. Avoid mass mentions such as `@everyone` or `@here`.
 8. If the channel type does not support attachments, do not try to work around it manually. Report that the selected channel cannot send files.
-9. If notification delivery fails, summarize the failure and include the channel name and error reason.
+9. If notification delivery fails, summarize each failed channel name and error reason.
 
 ## Checking Configuration
 
@@ -181,4 +181,4 @@ Use `notify test` instead of `notify send --dry-run` when the goal is to verify 
 
 If a notification command fails, do not silently ignore it.
 
-Report the failure with the channel name and error reason. If the failure is caused by missing configuration, suggest checking the channel configuration or environment variable.
+Report each failed channel name and error reason. If the failure is caused by missing configuration, suggest checking the channel configuration or environment variable.

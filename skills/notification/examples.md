@@ -14,6 +14,12 @@ notify send --title "Task completed" --body "The requested task completed succes
 notify send --channel personal --priority success --title "Task completed" --body "The requested task completed successfully."
 ```
 
+## Multiple Channels
+
+```bash
+notify send --channel personal --channel team --priority success --title "Task completed" --body "The requested task completed successfully."
+```
+
 ## Task Failed
 
 ```bash

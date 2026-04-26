@@ -10,6 +10,7 @@ pub use config::{
 pub use error::{NotifyError, Result};
 pub use message::{Attachment, MessageFormat, NotifyMessage, Priority};
 pub use output::{
-    DryRunAttachment, DryRunMessage, DryRunOutput, ErrorBody, ErrorOutput, SendOutput,
+    DryRunAttachment, DryRunMessage, DryRunOutput, DryRunResultOutput, ErrorBody, ErrorOutput,
+    SendOutput, SendResultOutput,
 };
 pub use provider::{SendResult, send_notification};
