@@ -322,7 +322,7 @@ url_env = "NOTIFY_WEBHOOK_URL"
 # timeout_seconds = 15
 ```
 
-The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `SPEC.md`.
+The webhook channel uses the project-defined webhook protocol. The v1 payload format is defined in `docs/webhook-v1.md`.
 
 ## Commands
 
